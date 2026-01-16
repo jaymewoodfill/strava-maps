@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { Difficulty, AccessType } from '@prisma/client'
 import { requireAdmin } from "@/lib/auth/middleware"
 import { uploadFile } from "@/lib/s3/upload"
 
@@ -19,6 +20,20 @@ export async function POST(request: NextRequest) {
     const location = formData.get("location") as string
     const accessType = formData.get("accessType") as string
     const price = formData.get("price") ? parseFloat(formData.get("price") as string) : null
+
+    // Runtime-validate enum values
+    const difficultyUpper = difficulty?.toUpperCase()
+    const accessTypeUpper = accessType?.toUpperCase()
+    const validDifficulties = Object.values(Difficulty)
+    const validAccessTypes = Object.values(AccessType)
+
+    if (!difficultyUpper || !validDifficulties.includes(difficultyUpper as Difficulty)) {
+      return NextResponse.json({ error: "Invalid difficulty" }, { status: 400 })
+    }
+
+    if (!accessTypeUpper || !validAccessTypes.includes(accessTypeUpper as AccessType)) {
+      return NextResponse.json({ error: "Invalid accessType" }, { status: 400 })
+    }
 
     // Handle file uploads
     const gpxFile = formData.get("gpxFile") as File
@@ -50,9 +65,9 @@ export async function POST(request: NextRequest) {
         description,
         distance,
         elevationGain,
-        difficulty: difficulty.toUpperCase(),
+        difficulty: difficultyUpper as Difficulty,
         location,
-        accessType: accessType.toUpperCase(),
+        accessType: accessTypeUpper as AccessType,
         price,
         gpxFileUrl: gpxUrl,
         thumbnailUrl: thumbnailUrl,
